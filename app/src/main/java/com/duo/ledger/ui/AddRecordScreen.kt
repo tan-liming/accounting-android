@@ -2,7 +2,6 @@ package com.duo.ledger.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,10 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -69,10 +65,8 @@ fun AddRecordScreen(
     var sourceText by remember { mutableStateOf("") }
     var fromParty by remember { mutableStateOf("") }
     var toParty by remember { mutableStateOf("") }
-    var categoryMenuOpen by remember { mutableStateOf(false) }
-    var showNewCategory by remember { mutableStateOf(false) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
     var showMemberManager by remember { mutableStateOf(false) }
-    var newCategoryName by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
 
     // 默认沿用上次的成员；上次选中的成员若已归档则回落到第一个可用成员。
@@ -129,6 +123,14 @@ fun AddRecordScreen(
     val visibleCategories = if (type == EntryType.INCOME) incomeCategories else expenseCategories
     val currentCategoryId = if (type == EntryType.INCOME) incomeCategoryId else expenseCategoryId
     val categoryName = visibleCategories.firstOrNull { it.id == currentCategoryId }?.name ?: "选择分类"
+
+    // 当前选中的分类被删除后自动回落，避免把新流水记到已删分类下。
+    LaunchedEffect(visibleCategories, currentCategoryId) {
+        if (currentCategoryId != null && visibleCategories.none { it.id == currentCategoryId }) {
+            val fallback = visibleCategories.firstOrNull()?.id
+            if (type == EntryType.INCOME) incomeCategoryId = fallback else expenseCategoryId = fallback
+        }
+    }
 
     fun save() {
         val mid = memberId
@@ -270,32 +272,11 @@ fun AddRecordScreen(
         )
 
         if (needsCategory) {
-            Box {
-                OutlinedButton(
-                    onClick = { categoryMenuOpen = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(categoryName)
-                }
-                DropdownMenu(
-                    expanded = categoryMenuOpen,
-                    onDismissRequest = { categoryMenuOpen = false }
-                ) {
-                    visibleCategories.forEach { c ->
-                        DropdownMenuItem(
-                            text = { Text(c.name) },
-                            onClick = {
-                                if (type == EntryType.INCOME) incomeCategoryId = c.id
-                                else expenseCategoryId = c.id
-                                categoryMenuOpen = false
-                            }
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text("＋ 新建分类") },
-                        onClick = { categoryMenuOpen = false; showNewCategory = true }
-                    )
-                }
+            OutlinedButton(
+                onClick = { showCategoryPicker = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("分类：$categoryName")
             }
         }
 
@@ -360,28 +341,18 @@ fun AddRecordScreen(
         }
     }
 
-    if (showNewCategory) {
-        AlertDialog(
-            onDismissRequest = { showNewCategory = false },
-            title = { Text("新建${if (type == EntryType.INCOME) "收入" else "支出"}分类") },
-            text = {
-                OutlinedTextField(
-                    value = newCategoryName,
-                    onValueChange = { newCategoryName = it },
-                    label = { Text("分类名") },
-                    singleLine = true
-                )
+    if (showCategoryPicker && needsCategory) {
+        CategoryPickerDialog(
+            kind = type,
+            selectedId = currentCategoryId,
+            vm = vm,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onSelect = { id ->
+                if (type == EntryType.INCOME) incomeCategoryId = id else expenseCategoryId = id
+                showCategoryPicker = false
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.addCategory(newCategoryName, type)
-                    newCategoryName = ""
-                    showNewCategory = false
-                }) { Text("保存") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNewCategory = false }) { Text("取消") }
-            }
+            onDismiss = { showCategoryPicker = false }
         )
     }
 

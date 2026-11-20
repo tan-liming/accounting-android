@@ -50,6 +50,8 @@ class LedgerRepository(
     /** 含已删除成员：流水页显示历史名字用；筛选 chips 仍用 members。 */
     val allMembers: Flow<List<MemberEntity>> = db.memberDao().observeAll()
     val categories: Flow<List<CategoryEntity>> = db.categoryDao().observeActive()
+    /** 含已删除分类：历史流水显示分类名时不能因为分类被删就变成「未分类」。 */
+    val allCategories: Flow<List<CategoryEntity>> = db.categoryDao().observeAll()
 
     fun records(range: PeriodRange, memberId: Long?, type: EntryType?): Flow<List<ActiveRecord>> =
         db.recordDao().observeBetween(range.startDay, range.endDay, memberId, type?.name)
@@ -134,6 +136,21 @@ class LedgerRepository(
         )
     }
 
+    suspend fun renameCategory(id: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        db.categoryDao().rename(id, trimmed)
+    }
+
+    /** 只归档，不物理删：历史流水的归属、按分类汇总、CSV 名字都保持原样。 */
+    suspend fun deleteCategory(id: Long) {
+        db.categoryDao().archive(id)
+    }
+
+    suspend fun restoreCategory(id: Long) {
+        db.categoryDao().unarchive(id)
+    }
+
     suspend fun addMember(name: String): Long {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return -1
@@ -207,7 +224,8 @@ class LedgerRepository(
             db.recordDao().exportBetween(range.startDay, range.endDay, memberId)
         }
         val memberNames = db.memberDao().all().associate { it.id to it.name }
-        val categoryNames = db.categoryDao().active().associate { it.id to it.name }
+        // 含已删除分类：历史流水导出时仍要显示原来的分类名。
+        val categoryNames = db.categoryDao().all().associate { it.id to it.name }
         return buildCsv(rows, memberNames, categoryNames)
     }
 

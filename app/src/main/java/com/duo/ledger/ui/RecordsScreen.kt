@@ -59,13 +59,14 @@ fun RecordsScreen(
     val summary by vm.summary.collectAsState()
     val members by vm.members.collectAsState()
     val allMembers by vm.allMembers.collectAsState()
-    val categories by vm.categories.collectAsState()
+    val allCategories by vm.allCategories.collectAsState()
 
     var editing by remember { mutableStateOf<ActiveRecord?>(null) }
 
     // 含已删除成员：从旧备份恢复的历史流水也能显示名字，不会变成空白。
     val memberNames = allMembers.associate { it.id to it.name }
-    val categoryNames = categories.associate { it.id to it.name }
+    // 含已删除分类：历史流水不能因为分类被删就显示成「未分类」。
+    val categoryNames = allCategories.associate { it.id to it.name }
     val grouped = records.groupBy { it.day }.toSortedMap(reverseOrder())
 
     LazyColumn(

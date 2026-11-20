@@ -2,7 +2,6 @@ package com.duo.ledger.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,8 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -54,6 +51,7 @@ fun EditRecordDialog(
 ) {
     val members by vm.members.collectAsState()
     val categories by vm.categories.collectAsState()
+    val allCategories by vm.allCategories.collectAsState()
 
     var type by remember(record.id) { mutableStateOf(record.type) }
     var amountText by remember(record.id) { mutableStateOf(record.amountCents.centsToYuan()) }
@@ -63,7 +61,7 @@ fun EditRecordDialog(
     var categoryId by remember(record.id) { mutableStateOf(record.categoryId) }
     var fromParty by remember(record.id) { mutableStateOf(record.fromParty.orEmpty()) }
     var toParty by remember(record.id) { mutableStateOf(record.toParty.orEmpty()) }
-    var categoryMenuOpen by remember { mutableStateOf(false) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
     val visibleCategories = remember(categories, type) {
@@ -117,6 +115,7 @@ fun EditRecordDialog(
         onDismiss()
     }
 
+    // 分类选择放在同一个 Dialog 内切换内容，避免嵌套弹窗；返回后表单状态仍在。
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -125,149 +124,149 @@ fun EditRecordDialog(
                 .fillMaxWidth()
                 .heightIn(max = 560.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text("编辑流水", style = MaterialTheme.typography.titleMedium)
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = type == EntryType.EXPENSE,
-                        onClick = { type = EntryType.EXPENSE },
-                        label = { Text("支出") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = type == EntryType.INCOME,
-                        onClick = { type = EntryType.INCOME },
-                        label = { Text("收入") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = type == EntryType.TRANSFER_OUT,
-                        onClick = { type = EntryType.TRANSFER_OUT },
-                        label = { Text("对外转出") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = type == EntryType.TRANSFER,
-                        onClick = { type = EntryType.TRANSFER },
-                        label = { Text("内部划转") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("金额（元）") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+            if (showCategoryPicker) {
+                CategoryPickerContent(
+                    kind = type,
+                    categories = allCategories,
+                    selectedId = categoryId,
+                    vm = vm,
+                    snackbarHostState = snackbarHostState,
+                    scope = scope,
+                    onSelect = { categoryId = it; showCategoryPicker = false },
+                    onClose = { showCategoryPicker = false }
                 )
-                OutlinedTextField(
-                    value = purpose,
-                    onValueChange = { purpose = it },
-                    label = { Text("用途") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("编辑流水", style = MaterialTheme.typography.titleMedium)
 
-                OutlinedButton(
-                    onClick = {
-                        DatePickerDialog(
-                            context,
-                            { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
-                            date.year,
-                            date.monthValue - 1,
-                            date.dayOfMonth
-                        ).show()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("日期：$date") }
-
-                Text("记在谁名下", style = MaterialTheme.typography.labelMedium)
-                MemberChipsRow(
-                    members = members,
-                    selectedId = memberId,
-                    onSelect = { memberId = it ?: record.memberId },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (needsCategory) {
-                    Box {
-                        OutlinedButton(
-                            onClick = { categoryMenuOpen = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(categoryName) }
-                        DropdownMenu(
-                            expanded = categoryMenuOpen,
-                            onDismissRequest = { categoryMenuOpen = false }
-                        ) {
-                            visibleCategories.forEach { c ->
-                                DropdownMenuItem(
-                                    text = { Text(c.name) },
-                                    onClick = { categoryId = c.id; categoryMenuOpen = false }
-                                )
-                            }
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = type == EntryType.EXPENSE,
+                            onClick = { type = EntryType.EXPENSE },
+                            label = { Text("支出") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = type == EntryType.INCOME,
+                            onClick = { type = EntryType.INCOME },
+                            label = { Text("收入") },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = type == EntryType.TRANSFER_OUT,
+                            onClick = { type = EntryType.TRANSFER_OUT },
+                            label = { Text("对外转出") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = type == EntryType.TRANSFER,
+                            onClick = { type = EntryType.TRANSFER },
+                            label = { Text("内部划转") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
-                when (type) {
-                    EntryType.INCOME -> OutlinedTextField(
-                        value = fromParty,
-                        onValueChange = { fromParty = it },
-                        label = { Text("来源（选填）") },
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { amountText = it },
+                        label = { Text("金额（元）") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = purpose,
+                        onValueChange = { purpose = it },
+                        label = { Text("用途") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    EntryType.TRANSFER_OUT -> OutlinedTextField(
-                        value = toParty,
-                        onValueChange = { toParty = it },
-                        label = { Text("转给谁") },
-                        singleLine = true,
+
+                    OutlinedButton(
+                        onClick = {
+                            DatePickerDialog(
+                                context,
+                                { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
+                                date.year,
+                                date.monthValue - 1,
+                                date.dayOfMonth
+                            ).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("日期：$date") }
+
+                    Text("记在谁名下", style = MaterialTheme.typography.labelMedium)
+                    MemberChipsRow(
+                        members = members,
+                        selectedId = memberId,
+                        onSelect = { memberId = it ?: record.memberId },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    EntryType.TRANSFER -> {
-                        OutlinedTextField(
+
+                    if (needsCategory) {
+                        OutlinedButton(
+                            onClick = { showCategoryPicker = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("分类：$categoryName") }
+                    }
+
+                    when (type) {
+                        EntryType.INCOME -> OutlinedTextField(
                             value = fromParty,
                             onValueChange = { fromParty = it },
-                            label = { Text("转出方") },
+                            label = { Text("来源（选填）") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        OutlinedTextField(
+                        EntryType.TRANSFER_OUT -> OutlinedTextField(
                             value = toParty,
                             onValueChange = { toParty = it },
-                            label = { Text("转入方") },
+                            label = { Text("转给谁") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        EntryType.TRANSFER -> {
+                            OutlinedTextField(
+                                value = fromParty,
+                                onValueChange = { fromParty = it },
+                                label = { Text("转出方") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = toParty,
+                                onValueChange = { toParty = it },
+                                label = { Text("转入方") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        else -> Unit
                     }
-                    else -> Unit
-                }
 
-                errorText?.let {
-                    Text(
-                        it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                    errorText?.let {
+                        Text(
+                            it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) { Text("取消") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = { save() }) { Text("保存") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = onDismiss) { Text("取消") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = { save() }) { Text("保存") }
+                    }
                 }
             }
         }

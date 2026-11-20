@@ -65,6 +65,20 @@ interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY id")
     suspend fun all(): List<CategoryEntity>
 
+    /** 含已删除分类：管理界面与历史流水的名字映射都要看全量。 */
+    @Query("SELECT * FROM categories ORDER BY sortOrder, id")
+    fun observeAll(): Flow<List<CategoryEntity>>
+
+    @Query("UPDATE categories SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
+    /** 删除分类只做归档：历史流水仍引用它，物理删会让分类汇总与导出丢名字。 */
+    @Query("UPDATE categories SET archived = 1 WHERE id = :id")
+    suspend fun archive(id: Long)
+
+    @Query("UPDATE categories SET archived = 0 WHERE id = :id")
+    suspend fun unarchive(id: Long)
+
     @Insert
     suspend fun insertAll(items: List<CategoryEntity>)
 

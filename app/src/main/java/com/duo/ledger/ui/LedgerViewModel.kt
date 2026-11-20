@@ -67,6 +67,9 @@ class LedgerViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val categories: StateFlow<List<CategoryEntity>> = repo.categories
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** 含已删除分类，仅用于把历史流水里的 categoryId 映射成名字。 */
+    val allCategories: StateFlow<List<CategoryEntity>> = repo.allCategories
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     // 偏好类 Flow 用 Eagerly：它们会被 .value 直接读取（识别、导出区间）。
     // WhileSubscribed 在订阅者归零 5 秒后会把值重置成初始值，
     // 会让「明明填过 Key」被误判成未配置，也会让设置页刚打开时显示空白。
@@ -229,10 +232,25 @@ class LedgerViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
-    fun addCategory(name: String, kind: EntryType) {
+    /** 返回新分类 id 供选择器自动选中；空名返回 null。 */
+    suspend fun addCategory(name: String, kind: EntryType): Long? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+        return repo.addCategory(trimmed, kind).takeIf { it > 0 }
+    }
+
+    fun renameCategory(id: Long, name: String) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        viewModelScope.launch { repo.addCategory(trimmed, kind) }
+        viewModelScope.launch { repo.renameCategory(id, trimmed) }
+    }
+
+    fun deleteCategory(id: Long) {
+        viewModelScope.launch { repo.deleteCategory(id) }
+    }
+
+    fun restoreCategory(id: Long) {
+        viewModelScope.launch { repo.restoreCategory(id) }
     }
 
     fun addMember(name: String) {
