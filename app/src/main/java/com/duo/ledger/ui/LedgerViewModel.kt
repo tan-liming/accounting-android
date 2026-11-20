@@ -105,6 +105,17 @@ class LedgerViewModel(app: Application) : AndroidViewModel(app) {
         .flatMapLatest { (r, m, t) -> repo.records(r, m, t) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * 统计页展开明细用：只跟随周期与成员筛选，不带流水页的类型筛选，
+     * 否则在流水页选了「支出」后，统计页展开收入分类会一条都查不到。
+     */
+    val statRecords: StateFlow<List<ActiveRecord>> = combine(
+        range,
+        snapshotFlow { memberFilter }
+    ) { r, m -> r to m }
+        .flatMapLatest { (r, m) -> repo.records(r, m, null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     /** 汇总只跟随周期与成员筛选；类型筛选只影响流水列表。 */
     val summary: StateFlow<LedgerSummary> = combine(
         range,
