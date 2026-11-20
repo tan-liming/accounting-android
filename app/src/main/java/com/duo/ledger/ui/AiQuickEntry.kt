@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.duo.ledger.ai.AiDraft
 import kotlinx.coroutines.CoroutineScope
@@ -32,7 +33,10 @@ fun AiQuickEntry(
     onDraft: (AiDraft) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var text by remember { mutableStateOf("") }
+    // 中文输入法的拼音串靠 composition 标记未上屏部分；用 String 保存状态会在重组时
+    // 丢掉 composition 和光标位置，与 IME 的 commitText 时序竞争就表现为「字符顺序乱」。
+    // TextFieldValue 把文本、选区、组合区一起留住。
+    var text by remember { mutableStateOf(TextFieldValue("")) }
     var loading by remember { mutableStateOf(false) }
 
     Card(modifier = modifier.fillMaxWidth()) {
@@ -52,7 +56,7 @@ fun AiQuickEntry(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        val input = text.trim()
+                        val input = text.text.trim()
                         if (input.isEmpty()) return@Button
                         loading = true
                         scope.launch {
@@ -70,13 +74,13 @@ fun AiQuickEntry(
                             }
                         }
                     },
-                    enabled = !loading && text.isNotBlank()
+                    enabled = !loading && text.text.isNotBlank()
                 ) {
                     Text(if (loading) "识别中…" else "识别")
                 }
                 TextButton(
-                    onClick = { text = "" },
-                    enabled = !loading && text.isNotEmpty()
+                    onClick = { text = TextFieldValue("") },
+                    enabled = !loading && text.text.isNotEmpty()
                 ) {
                     Text("清空")
                 }
