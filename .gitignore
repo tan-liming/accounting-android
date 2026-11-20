@@ -1,0 +1,24 @@
+# Gradle / Kotlin / IDE 本机产物
+.gradle/
+.kotlin/
+/build/
+/app/build/
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 本机 Android SDK 路径，换机器需重新生成
+/local.properties
+
+# 构建产物与导出的账目文件，不进版本库
+*.apk
+*.ap_
+*.aab
+duo_ledger_*.csv
+duo_ledger_backup_*.json
+
+# WorkBuddy 本机项目数据（笔记与记忆），不随代码提交
+.workbuddy/

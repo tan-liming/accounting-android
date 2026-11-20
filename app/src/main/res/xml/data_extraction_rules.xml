@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  纯本地应用：账目数据库不进入 Android 云备份 / 设备迁移。
+  备份与恢复走应用内的导出 / 导入功能，避免流水数据被系统上传到云端。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="duo_ledger.db" />
+        <exclude domain="database" path="duo_ledger.db-shm" />
+        <exclude domain="database" path="duo_ledger.db-wal" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="duo_ledger.db" />
+        <exclude domain="database" path="duo_ledger.db-shm" />
+        <exclude domain="database" path="duo_ledger.db-wal" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 白天模式：系统 uiMode 非 night 时命中，与 Compose 的 dynamicLightColorScheme 对应 -->
+    <style name="Theme.DuoLedger" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_light</item>
+        <item name="android:statusBarColor">@color/window_light</item>
+        <item name="android:navigationBarColor">@color/window_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

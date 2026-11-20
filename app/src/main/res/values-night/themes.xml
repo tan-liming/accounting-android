@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式：系统切到深色时由 -night 限定符自动选中，与 Compose 的 isSystemInDarkTheme 是同一个开关 -->
+    <style name="Theme.DuoLedger" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_dark</item>
+        <item name="android:statusBarColor">@color/window_dark</item>
+        <item name="android:navigationBarColor">@color/window_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
